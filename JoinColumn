@@ -1,0 +1,74 @@
+1. 一对一
+
+现假设有Person表和Address表，是一对一的关系，在Person中有一个指向Address表主键的字段addressID，所以主控方一定是Person，所谓主控方就是能改变关联关系的一方，Person只要改变addressID就改变了关联关系，所以Person是主控方，所以@JoinColumn写在Person类中
+
+[java] view plain copy
+@OneToOne(cascade=CascadeType.ALL,optional=true)  
+@JoinColumn(name="addressID")//注释本表中指向另一个表的外键。  
+public Address getAddress() {   
+    return address;  
+}  
+我们也可以不写@JoinColumn，Hibernate会自动在Person表生成关联字段，名称是被控方类名_被控方主键，如address_id
+如果两张表是以主键关联的，比如Person表主键是id，Address表主键是address_id，则运用如下注释：
+
+[java] view plain copy
+@OneToOne(cascade={CascadeType.ALL})  
+@PrimaryKeyJoinColumn(name = "id", referencedColumnName="address_id")   
+public Address getAddress( ) {  
+      return homeAddress;  
+}  
+2.一对多单向
+假如现在有Person表和Country表，那么一定是Person表中有country_id字段
+
+由于我们是一对多的关系，所以站在一的角度，也就是Country的角度，在Country类中加入@JoinColumn：
+
+[java] view plain copy
+@OneToMany(cascade=CascadeType.ALL)   
+@JoinColumn(name="country_id")//注释的是另一个表指向本表的外键。   
+public List<Person> getPersons() {  
+    return persons;   
+}  
+在一对多单向关系中，多的一方（Person）没有注解，一的一方（Country）有注解，如果一的一方不加@JoinColumn指定外键字段的话，Hibernate会自动生成一张中间表Country_PERSON来对Person和Country进行绑定。
+
+3.多对一单向
+
+还是沿用一对多单向的例子，只是反过来，将Country中的注解去掉，挪到Person类中：
+
+[java] view plain copy
+@ManyToOne   
+@JoinColumn(name="country_id")   
+public Country getCountry() {   
+    return country;   
+}  
+与一对多单向不同的是，此时若不用@JoinColumn指定外键字段的话，不会生成中间表，而是在Person表中生成一列指向Country的外键。
+如果记不清这类关系的话，最好自己把表都设计好，通过注解将关系全部指定，不要让Hibernate代劳。使用中间表关联的注解：
+
+[java] view plain copy
+@JoinTable(name = "Person_Country",   
+joinColumns = {@JoinColumn(name = "person_id")},  
+inverseJoinColumns = {@JoinColumn(name = "country_id")})  
+joinColumns指定中间表中关联自己ID的字段，inverseJoinColumns表示中间表中关联对方ID的字段，在Country类中使用这个注解把它们对调一下即可。
+
+
+
+4.一对多双向
+
+单向关系的缺点还是比较明显的，比如一对多单向，多的那一方没有任何关于另一方的信息，如果我们通过person_id取得一个单独的Person对象，我们没办法知道它属于哪个Country，因为Person类中没有Country对象，多对一单向则是反之。所以正常使用时，一对多双向是最常用的，双方都有彼此的信息。单向变双向，只需在单向的基础上，在Person类中加入多对一的注解：
+
+[java] view plain copy
+@ManyToOne(cascade = CascadeType.ALL, optional = false)  
+@JoinColumn(name="country_id")  
+private Country country;  
+
+
+5.多对多单向
+一般多对多的关系都是用中间表来维护的，假设现在有Person表，Project表，Person_Project表，Person类中的注解：
+
+[java] view plain copy
+@ManyToMany(cascade = CascadeType.ALL)  
+@JoinTable(name = "Person_Project",  
+joinColumns = {@JoinColumn(name = "person_id")},  
+inverseJoinColumns = {@JoinColumn(name = "project_id")})   
+public List<Project> getProjects() {   
+    return project;   
+}  
